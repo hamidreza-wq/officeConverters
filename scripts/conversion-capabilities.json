@@ -1,0 +1,24 @@
+{
+  "office": {
+    "docx": ["pdf", "odt", "rtf", "txt"],
+    "odt": ["pdf", "docx", "rtf", "txt"],
+    "rtf": ["pdf", "docx", "odt", "txt"],
+    "txt": ["pdf", "docx", "odt", "rtf"],
+    "pptx": ["pdf", "odp"],
+    "odp": ["pdf", "pptx"],
+    "xlsx": ["ods", "pdf", "csv", "tsv", "json"],
+    "ods": ["xlsx", "pdf", "csv", "tsv", "json"]
+  },
+  "pdf": {
+    "pdf": ["docx", "txt", "csv", "xlsx", "png", "jpg", "tiff", "pptx", "ocrpdf"]
+  },
+  "images": {
+    "png": ["jpg", "webp", "bmp", "tiff", "pdf", "txt", "ocrpdf"],
+    "jpg": ["png", "webp", "bmp", "tiff", "pdf", "txt", "ocrpdf"],
+    "jpeg": ["png", "jpg", "webp", "bmp", "tiff", "pdf", "txt", "ocrpdf"],
+    "webp": ["png", "jpg", "bmp", "tiff", "pdf", "txt", "ocrpdf"],
+    "bmp": ["png", "jpg", "webp", "tiff", "pdf", "txt", "ocrpdf"],
+    "tiff": ["png", "jpg", "webp", "bmp", "pdf", "txt", "ocrpdf"],
+    "gif": ["png", "jpg", "webp", "bmp", "tiff", "pdf", "txt", "ocrpdf"]
+  }
+}

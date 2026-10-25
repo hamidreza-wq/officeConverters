@@ -1,0 +1,44 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Office Converters: web",
+			"type": "shell",
+			"command": "php",
+			"args": [
+				"scripts\\serve.php"
+			],
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"label": "Office Converters: worker",
+			"type": "shell",
+			"command": "php",
+			"args": [
+				"-d",
+				"memory_limit=256M",
+				"artisan",
+				"queue:work",
+				"database",
+				"--sleep=2",
+				"--tries=3",
+				"--timeout=150",
+				"--memory=256"
+			],
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"label": "Office Converters: scheduler",
+			"type": "shell",
+			"command": "php",
+			"args": [
+				"artisan",
+				"schedule:work"
+			],
+			"isBackground": true,
+			"problemMatcher": []
+		}
+	]
+}

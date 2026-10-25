@@ -1,0 +1,12 @@
+@extends('layouts.app')
+@section('title', 'Administration')
+@section('content')
+<section class="container section">
+    <span class="eyebrow">ADMINISTRATION</span><h1 class="page-title">A clear view of your platform.</h1>
+    <div class="stat-grid">@foreach(['Registered users' => $users, 'Queued work items' => $queued, 'Failed queue records' => $failed, 'Completed conversions' => $counts['completed'] ?? 0] as $label => $value)<div class="stat-card"><span>{{ $label }}</span><strong>{{ $value }}</strong></div>@endforeach</div>
+    <div class="notice info"><strong>Database:</strong> {{ str_contains(strtolower($version), 'mariadb') ? 'MariaDB' : 'MySQL' }} {{ $version }}. <strong>Available pairs:</strong> {{ count(app(App\Services\Conversions\FormatRegistry::class)->pairs()) }}. <strong>Local engine health:</strong> {{ json_encode(app(App\Services\Conversions\LocalEngineConverter::class)->health()) }}. <strong>Worker last seen:</strong> {{ Illuminate\Support\Facades\Cache::get('conversion-worker-heartbeat') ?? 'not observed' }}. A heartbeat older than one minute may indicate a stopped worker.</div>
+    <div class="admin-settings"><h2>Conversion availability</h2><p>Pausing new submissions does not remove existing downloads. Sensitive changes require your current password.</p><form class="stack-form" method="post" action="{{ route('admin.update') }}">@csrf @method('patch')<label for="conversions_enabled">New conversion submissions</label><select name="conversions_enabled" id="conversions_enabled"><option value="1" @selected($enabled)>Enabled</option><option value="0" @selected(!$enabled)>Paused</option></select><label for="admin-password">Current password</label><input id="admin-password" name="password" type="password" autocomplete="current-password" required><button class="button">Save &amp; audit change</button></form></div>
+    <h2 class="subsection-title">Recent administrative audit events</h2><div class="table-wrap"><table><thead><tr><th>Action</th><th>Actor ID</th><th>Subject</th><th>Time (UTC)</th></tr></thead><tbody>@forelse($audit as $event)<tr><td>{{ $event->action }}</td><td>{{ $event->user_id }}</td><td>{{ $event->subject }}</td><td>{{ $event->created_at }}</td></tr>@empty<tr><td colspan="4">No administrative events recorded.</td></tr>@endforelse</tbody></table></div>
+    <p class="muted">User-role grants are CLI-only. Resource limits and retention are environment configuration in this release; advanced user management, branding and billing controls are not implemented.</p>
+</section>
+@endsection
