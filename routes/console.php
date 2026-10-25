@@ -15,9 +15,14 @@ use Illuminate\Support\Facades\Storage;
 
 Artisan::command('converters:health', function (): int {
     try {
-        $version = DB::selectOne('SELECT VERSION() AS version, DATABASE() AS db');
-        $engine = str_contains(strtolower($version->version), 'mariadb') ? 'MariaDB' : 'MySQL';
-        $this->info("{$engine} {$version->version}; database {$version->db}; PDO driver ".DB::connection()->getPdo()->getAttribute(PDO::ATTR_DRIVER_NAME));
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            $version = DB::selectOne('SELECT sqlite_version() AS version');
+            $this->info("SQLite {$version->version}; local desktop metadata; PDO driver sqlite");
+        } else {
+            $version = DB::selectOne('SELECT VERSION() AS version, DATABASE() AS db');
+            $engine = str_contains(strtolower($version->version), 'mariadb') ? 'MariaDB' : 'MySQL';
+            $this->info("{$engine} {$version->version}; database {$version->db}; PDO driver ".DB::connection()->getPdo()->getAttribute(PDO::ATTR_DRIVER_NAME));
+        }
         $this->info(count(app(FormatRegistry::class)->pairs()).' available conversion pairs; OpenSpout '.InstalledVersions::getPrettyVersion('openspout/openspout'));
         $this->line('Worker last seen: '.(Cache::get('conversion-worker-heartbeat') ?? 'not observed; start queue:work'));
         $health = app(LocalEngineConverter::class)->health();
@@ -26,11 +31,38 @@ Artisan::command('converters:health', function (): int {
         return 0;
     } catch (Throwable $error) {
         Log::error('Health check failed.', ['exception_type' => $error::class]);
-        $this->error('MySQL/MariaDB health check failed. Check the server, credentials and migrations. No database fallback was used.');
+        $this->error('Database or conversion engine health check failed. Check configuration, diagnostics and migrations. No database fallback was used.');
 
         return 1;
     }
-})->purpose('Verify MySQL/MariaDB identity, implemented engines and worker heartbeat');
+})->purpose('Verify database identity, implemented engines and worker heartbeat');
+
+Artisan::command('converters:desktop-prepare', function (): int {
+    if (! config('app.desktop_mode') || DB::connection()->getDriverName() !== 'sqlite') {
+        $this->error('Desktop preparation requires explicit desktop mode with SQLite.');
+
+        return 1;
+    }
+    $version = json_decode(file_get_contents(base_path('desktop-version.json')), true, flags: JSON_THROW_ON_ERROR)['version'];
+    $marker = storage_path('app/desktop-version');
+    if (is_file($marker) && trim(file_get_contents($marker)) !== $version) {
+        $backup = dirname(storage_path()).DIRECTORY_SEPARATOR.'backups'.DIRECTORY_SEPARATOR.'before-'.date('Ymd-His').'-'.bin2hex(random_bytes(4)).'.sqlite';
+        DB::statement('VACUUM INTO ?', [$backup]);
+    }
+    $result = Artisan::call('migrate', ['--force' => true, '--no-interaction' => true]);
+    $this->output->write(Artisan::output());
+    if ($result !== 0) {
+        return $result;
+    }
+    // A single desktop instance owns this database; previous processing jobs lost their worker.
+    Conversion::where('status', 'processing')->update([
+        'status' => 'failed', 'error_code' => 'worker_interrupted',
+        'error_message' => 'The application closed during conversion. Retry this document.',
+    ]);
+    file_put_contents($marker, $version, LOCK_EX);
+
+    return 0;
+})->purpose('Back up upgrade metadata, migrate the local desktop database and recover interrupted work');
 
 Artisan::command('converters:admin {email}', function (): int {
     $user = User::where('email', $this->argument('email'))->first();

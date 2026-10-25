@@ -15,7 +15,7 @@ return [
     |
     */
 
-    'default' => env('CACHE_STORE', 'database'),
+    'default' => env('CACHE_STORE', env('APP_DESKTOP_MODE', false) ? 'file' : 'database'),
 
     /*
     |--------------------------------------------------------------------------

@@ -29,22 +29,29 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        if (config('database.default') !== 'mysql') {
-            throw new LogicException('This application requires DB_CONNECTION=mysql; no alternative database is supported.');
+        $databaseDriver = config('database.default');
+        $isDesktopSqlite = config('app.desktop_mode') && $databaseDriver === 'sqlite';
+        if ($databaseDriver !== 'mysql' && ! $isDesktopSqlite) {
+            throw new LogicException('MySQL is required unless desktop mode is enabled with SQLite.');
         }
-        Event::listen(ConnectionEstablished::class, function (ConnectionEstablished $event): void {
-            $version = (string) $event->connection->getPdo()->getAttribute(\PDO::ATTR_SERVER_VERSION);
-            if ($event->connection->getDriverName() !== 'mysql'
-                || version_compare($version, str_contains(strtolower($version), 'mariadb') ? '10.4.0' : '8.0.0', '<')) {
-                throw new LogicException('MySQL 8.0+ or MariaDB 10.4+ using the mysql connection is required.');
-            }
-        });
+        if (config('app.desktop_mode') && strlen((string) config('app.desktop_token')) < 32) {
+            throw new LogicException('Desktop mode requires a per-launch access token of at least 32 characters.');
+        }
+        if ($databaseDriver === 'mysql') {
+            Event::listen(ConnectionEstablished::class, function (ConnectionEstablished $event): void {
+                $version = (string) $event->connection->getPdo()->getAttribute(\PDO::ATTR_SERVER_VERSION);
+                if ($event->connection->getDriverName() !== 'mysql'
+                    || version_compare($version, str_contains(strtolower($version), 'mariadb') ? '10.4.0' : '8.0.0', '<')) {
+                    throw new LogicException('MySQL 8.0+ or MariaDB 10.4+ using the mysql connection is required.');
+                }
+            });
+        }
         Gate::define('admin', fn (User $user) => $user->is_admin);
         RateLimiter::for('login', fn (Request $request) => [
             Limit::perMinute(5)->by(strtolower((string) $request->input('email')).'|'.$request->ip()),
             Limit::perMinute(30)->by($request->ip()),
         ]);
-        RateLimiter::for('uploads', fn (Request $request) => Limit::perMinute(10)->by($request->user()->id));
+        RateLimiter::for('uploads', fn (Request $request) => Limit::perMinute(10)->by($request->user()?->id ?? $request->ip()));
         Queue::looping(fn () => Cache::put('conversion-worker-heartbeat', now()->toIso8601String(), 120));
     }
 }

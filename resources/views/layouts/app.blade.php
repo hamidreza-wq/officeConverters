@@ -17,14 +17,18 @@
             <a href="{{ route('privacy') }}">Privacy first</a>
             @auth
                 <a href="{{ route('dashboard') }}">My workspace</a>
-                <a href="{{ route('account') }}">Account</a>
-                @can('admin')<a href="{{ route('admin') }}">Admin</a>@endcan
+                @if(!config('app.desktop_mode'))
+                    <a href="{{ route('account') }}">Account</a>
+                    @can('admin')<a href="{{ route('admin') }}">Admin</a>@endcan
+                @endif
             @endauth
         </nav>
         <div class="nav-actions">
             @auth
                 <span class="account-name">{{ auth()->user()->name }}</span>
-                <form method="post" action="{{ route('logout') }}">@csrf<button class="button button-small button-outline">Sign out</button></form>
+                @if(!config('app.desktop_mode'))
+                    <form method="post" action="{{ route('logout') }}">@csrf<button class="button button-small button-outline">Sign out</button></form>
+                @endif
             @else
                 <a class="login-link" href="{{ route('login') }}">Log in</a>
                 <a class="button button-small" href="{{ route('register') }}">Get started <span aria-hidden="true">&rarr;</span></a>

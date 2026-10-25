@@ -1,19 +1,74 @@
 {
     "$schema": "https://www.schemastore.org/package.json",
+    "name": "office-converters",
+    "version": "0.1.0",
+    "description": "Offline document conversion for Windows",
+    "author": "Hamid Reza Bayat",
     "private": true,
     "type": "module",
+    "main": "desktop/main.cjs",
     "scripts": {
         "build": "vite build",
-        "dev": "vite"
+        "dev": "vite",
+        "test:desktop": "node --test desktop/tests/*.test.cjs",
+        "package:windows": "electron-builder --win nsis --x64"
     },
     "devDependencies": {
         "@tailwindcss/vite": "^4.0.0",
         "concurrently": "^10.0.3",
+        "electron": "45.0.0",
+        "electron-builder": "26.18.0",
         "laravel-vite-plugin": "^3.1",
         "tailwindcss": "^4.0.0",
         "vite": "^8.0.0"
     },
     "optionalDependencies": {
         "@laravel/multiplex": "^0.4.1"
+    },
+    "build": {
+        "appId": "com.officeconverters.desktop",
+        "productName": "Office Converters",
+        "copyright": "Copyright (c) 2026 Hamid Reza Bayat",
+        "asar": true,
+        "directories": {
+            "output": "dist",
+            "buildResources": "desktop/assets"
+        },
+        "files": [
+            "desktop/main.cjs",
+            "desktop/runtime.cjs",
+            "package.json"
+        ],
+        "extraResources": [
+            {
+                "from": ".desktop-build/payload",
+                "to": "payload"
+            }
+        ],
+        "win": {
+            "target": ["nsis"],
+            "icon": "desktop/assets/icon.ico",
+            "artifactName": "officeConverters-Setup-x64.exe",
+            "signAndEditExecutable": true
+        },
+        "nsis": {
+            "oneClick": false,
+            "perMachine": false,
+            "allowElevation": false,
+            "allowToChangeInstallationDirectory": true,
+            "createDesktopShortcut": "always",
+            "createStartMenuShortcut": true,
+            "shortcutName": "Office Converters",
+            "deleteAppDataOnUninstall": false,
+            "runAfterFinish": false,
+            "include": "desktop/installer.nsh"
+        },
+        "electronFuses": {
+            "runAsNode": false,
+            "enableNodeOptionsEnvironmentVariable": false,
+            "enableNodeCliInspectArguments": false,
+            "enableEmbeddedAsarIntegrityValidation": true,
+            "onlyLoadAppFromAsar": true
+        }
     }
 }

@@ -1,0 +1,12 @@
+{
+    "php": "8.5.11",
+    "python": "3.14.7",
+    "libreoffice": "26.8.1.1",
+    "tesseract": "5.4.0.20240606",
+    "sources": {
+        "php": "https://windows.php.net/download/",
+        "python": "https://www.python.org/downloads/windows/",
+        "libreoffice": "https://www.libreoffice.org/download/download-libreoffice/",
+        "tesseract": "https://github.com/UB-Mannheim/tesseract/wiki"
+    }
+}

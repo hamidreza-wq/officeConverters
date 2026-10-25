@@ -18,7 +18,7 @@ return [
     |
     */
 
-    'driver' => env('SESSION_DRIVER', 'database'),
+    'driver' => env('SESSION_DRIVER', env('APP_DESKTOP_MODE', false) ? 'file' : 'database'),
 
     /*
     |--------------------------------------------------------------------------

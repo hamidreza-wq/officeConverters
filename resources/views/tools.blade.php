@@ -13,7 +13,7 @@
         @foreach($pairs as $pair)
             <article class="tool-card" data-tool="{{ $pair['source'] }} {{ $pair['target'] }} {{ in_array('xlsx', [$pair['source'], $pair['target']]) ? 'excel spreadsheet' : '' }} {{ $pair['ocr_required'] ? 'ocr scanned searchable' : '' }}">
                 <span class="pill available">AVAILABLE</span><h3>{{ strtoupper($pair['source']) }} <span class="purple">&rarr;</span> {{ strtoupper($pair['target']) }}</h3>
-                <p>{{ $pair['engine'] }}. {{ $pair['source'] === 'zip' ? 'All ZIP entries must support the selected target; unsupported entries fail explicitly.' : 'Best-effort conversion; review warnings and output.' }}</p><a class="text-link" href="{{ auth()->check() ? route('dashboard', ['target' => $pair['target']]) : route('register') }}">Open workspace &rarr;</a>
+                <p>{{ $pair['engine'] }}. {{ $pair['source'] === 'zip' ? 'All ZIP entries must support the selected target; unsupported entries fail explicitly.' : 'Best-effort conversion; review warnings and output.' }}</p><a class="text-link" href="{{ auth()->check() || config('app.desktop_mode') ? route('dashboard', ['target' => $pair['target']]) : route('register') }}">Open workspace &rarr;</a>
             </article>
         @endforeach
     </div>

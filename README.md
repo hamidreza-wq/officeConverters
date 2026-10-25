@@ -1,8 +1,25 @@
 # Office Converters
 
-A working, staged Laravel document-conversion platform using **MySQL or XAMPP MariaDB**, through PDO MySQL.
-It combines strict tabular adapters with installed local PDF/OCR, Office, image and ZIP conversion engines.
+A local document converter with an **offline Windows desktop installer**, plus a separately deployable
+Laravel web application using **MySQL or XAMPP MariaDB**. It combines strict tabular adapters with real
+PDF/OCR, Office, image and ZIP conversion engines.
 This is **not a universal converter or a production-readiness certification**: only healthy, implemented pairs are advertised.
+
+## Install the Windows application
+
+Run [`dist/officeConverters-Setup-x64.exe`](dist/officeConverters-Setup-x64.exe), then open **Office
+Converters** from the Windows Start Menu. The installer bundles PHP, Python and its conversion
+libraries, LibreOffice, Tesseract, Electron and required C++ runtime DLLs. There is no manual developer
+tool installation, database server, account or cloud conversion requirement.
+
+The desktop app uses a private per-user SQLite database and saves documents through native Save dialogs.
+Settings/history live in `%APPDATA%\OfficeConverters`; saved output defaults to `Documents\Office Converters`.
+Uninstalling preserves those files. Version 0.1.0 is an **unsigned pre-release**; clean-Windows/offline
+certification, code signing and public-redistribution licence review remain release gates.
+
+See [build and installation instructions](docs/BUILD_AND_INSTALLER.md),
+[desktop architecture](docs/DESKTOP_ARCHITECTURE.md), and [licensing](docs/LICENSING.md).
+The setup below is for web deployments and developers, **not desktop end users**.
 
 ## Implemented
 
@@ -92,7 +109,7 @@ Arbitrary extensions, legacy binary DOC/XLS/PPT, RAR/7z, password removal, arbit
 perfect PDF layout reconstruction, handwriting/non-English OCR and unrestricted document sizes.
 The engine is expandable, not a promise to handle every file. New pairs require bounded adapters and real-output tests.
 
-## Runtime requirements
+## Web/development runtime requirements
 
 Verified locally on Windows:
 
@@ -123,7 +140,8 @@ Use a Node version supported by the locked Vite version; Node 22.12+ or a compat
 At the user's request, the application now uses the existing XAMPP MariaDB server on `127.0.0.1:3306`.
 `DB_CONNECTION=mysql` is retained because PDO MySQL supports both servers. MySQL 8.0+ and MariaDB 10.4+
 are accepted. MariaDB 10.4 is end-of-life: upgrade before production deployment.
-No alternative application database configuration or automatic fallback exists.
+MySQL remains the default for the existing web application; there is no automatic database fallback.
+The packaged desktop application explicitly selects SQLite and does not require this database setup.
 
 Provision databases and distinct users using a MySQL administrator (replace the example passwords):
 
@@ -282,17 +300,36 @@ Before exposing the application:
 9. Monitor queue age, failures, disk usage, scheduler activity and worker heartbeat; a heartbeat is not full queue monitoring.
 10. Review legal notices, backup retention and operational access before making privacy or compliance claims.
 
-The database queue is deliberately pinned to the MySQL connection so submission records and work items commit atomically.
+For the current web deployment, the database queue uses the MySQL connection so submission records and work items commit atomically.
 Changing queue backends requires revisiting that transactional guarantee; this release does not advertise Redis queue support.
 Use a small supervised worker pool (one locally); do not start an unbounded number of conversion workers.
+
+Desktop backend mode uses the selected SQLite connection for its local metadata and database queue.
+The web deployment remains on MySQL unless explicitly configured otherwise.
+
+### Desktop backend integration
+
+An opt-in backend mode is available for desktop integration work. It disables registration, login,
+email verification, account management, and administrator routes; requests require a per-launch
+`X-OfficeConverters-Desktop` token, and a single verified local profile is created automatically.
+Configure `APP_DESKTOP_MODE=true`, a random `APP_DESKTOP_TOKEN` of at least 32 characters,
+`DB_CONNECTION=sqlite`, `DB_DATABASE` as a per-user absolute SQLite path,
+`DB_QUEUE_CONNECTION=sqlite`, `CACHE_STORE=file`, `SESSION_DRIVER=file`, and
+`LARAVEL_STORAGE_PATH` as a per-user writable data directory. Bind the local web server to loopback
+only and have a trusted desktop host inject the token on requests.
+
+The Electron host sets this environment automatically, generates/injects the launch token, initializes
+the per-user data directory, and supervises the local server, worker and scheduler. End users do not
+configure these variables. The Windows build pipeline packages the real runtime dependencies and an
+offline NSIS installer; see [BUILD_AND_INSTALLER.md](docs/BUILD_AND_INSTALLER.md).
 
 ## Testing and verification
 
 Create `.env.testing` from `.env.example`, use the **same APP_KEY or a separate generated test key**,
 set `APP_ENV=testing`, `DB_DATABASE=office_converters_test`, and the distinct test username/password.
 The local provisioning script has already created this ignored file for this workspace.
-Never point tests at the application database. PHPUnit forces the test database name and the test bootstrap
-refuses connections without the PDO MySQL driver or a database other than `office_converters_test` before any test transaction starts.
+Never point tests at the application database. The standard PHPUnit configuration forces the test database
+name, and the test bootstrap refuses connections to anything other than `office_converters_test` before any test transaction starts.
 
 ```powershell
 php artisan config:clear
@@ -316,11 +353,32 @@ Additional coverage includes Unicode, quoted/multiline values,
 leading zeros, large numeric identifiers, decimal strings, database queue execution, duplicate submission,
 owner isolation, unsafe XML, expansion/row/column limits, invalid data, formula handling, expiration,
 cleanup, retries, abandoned jobs, batch ZIP contents, email verification/reset, administration and account deletion/export.
-Tests use MySQL transactions and a separate fake filesystem, not an in-memory application database or fake conversion engine.
+The standard PHP suite uses MySQL transactions and a separate fake filesystem, not a fake conversion engine.
+The separate desktop-mode test configuration uses an isolated in-memory SQLite database and exercises the
+account-free, access-token-protected local workspace plus a real CSV-to-XLSX conversion.
 Failure callbacks and aggregate deadline rejection are tested; concurrent multi-process stress tests are not yet certified.
 
+Run the desktop backend tests separately with:
+
+```powershell
+php vendor\bin\phpunit --configuration phpunit.desktop.xml
+```
+
+These PHPUnit tests cover the backend. `npm run test:desktop` additionally tests launcher helpers and
+actual Windows process-tree cleanup. The installer build also runs
+`node scripts\smoke-desktop.cjs --payload .desktop-build\payload` against only bundled engines,
+checks parsed outputs from eight queued Office/PDF/OCR conversions, and verifies an upgrade backup.
+These tests do not substitute for fresh-Windows installation certification.
+
 The original XAMPP baseline passed **48 tests / 364 assertions** against MariaDB 10.4.32 on port 3306.
-The expanded complete PHP suite passed **63 tests / 515 assertions** against the separate XAMPP test database.
+The current standard PHP web suite passed **64 tests / 538 assertions** against the separate XAMPP test database.
+The separate SQLite desktop-mode suite passed **4 tests / 36 assertions**, including a real local
+CSV-to-XLSX job, token rejection and loopback enforcement. The launcher suite passed **5 tests**.
+The packaged native window loaded the workspace/assets and closed without leaving runtime processes.
+The actual NSIS installer, installed Start Menu launch/single-instance behavior, eight bundled-engine
+smoke conversions with Unicode paths, and uninstall/data preservation also passed on this development
+Windows machine. This is not clean-machine certification.
+The latest focused web account/conversion regressions passed **32 tests / 304 assertions**.
 The expanded Python all-pairs suite passed **7 tests**, including subtests for every local pair and ZIP target.
 Two final targeted regressions also passed for emitted CSV previews and calculated multi-sheet exports.
 All six migrations, including actual output extensions and warnings, ran on both XAMPP databases.

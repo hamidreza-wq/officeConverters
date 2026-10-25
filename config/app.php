@@ -28,6 +28,10 @@ return [
 
     'env' => env('APP_ENV', 'production'),
 
+    'desktop_mode' => (bool) env('APP_DESKTOP_MODE', false),
+
+    'desktop_token' => env('APP_DESKTOP_TOKEN'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Debug Mode
